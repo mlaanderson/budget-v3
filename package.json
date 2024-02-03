@@ -1,0 +1,25 @@
+{
+  "name": "budget-v3",
+  "version": "0.0.1",
+  "description": "Budget web service",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/mlaanderson/budget-v3.git"
+  },
+  "keywords": [
+    "budget"
+  ],
+  "author": "Michael Anderson <michael@anderson-clan.org>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mlaanderson/budget-v3/issues"
+  },
+  "homepage": "https://github.com/mlaanderson/budget-v3#readme",
+  "dependencies": {
+    "neo4j-driver": "^5.17.0"
+  }
+}
