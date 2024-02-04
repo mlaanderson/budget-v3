@@ -1,4 +1,5 @@
-/** @typedef {import './nobject.mjs'.Session} Session */
+/** @typedef {import ('neo4j-driver').Session} Session */
+/** @typedef {import ('./service.mjs').Service} Service */
 /** @typedef {import ('../lib/types.mjs').UserData} UserData */
 import NObject from "./nobject.mjs";
 import { HashPassword } from "../lib/secure.mjs";
@@ -38,10 +39,10 @@ RETURN budget
 class UserManager extends NObject {
     /**
      * 
-     * @param {Session} session 
+     * @param {Service} service 
      */
-    constructor(session) {
-        super(session);
+    constructor(service) {
+        super(service);
     }
 
     /**

@@ -39,9 +39,12 @@ function SessionPoolProxy(service, session) {
 
 const CONFIGURATIONS = [
     `CREATE CONSTRAINT username IF NOT EXISTS FOR (user:User) REQUIRE (user.email) IS UNIQUE`,
-    `CREATE CONSTRAINT budgetname IF NOT EXISTS FOR (budget:Budget) REQUIRE (budget.owner, budget.name) IS UNIQUE`
+    `CREATE CONSTRAINT budgetname IF NOT EXISTS FOR (budget:Budget) REQUIRE (budget.owner, budget.name) IS UNIQUE`,
 ]
 
+/**
+ * @typedef {{use: () => Session}} Service
+ */
 class Service {
     /**
      * 
@@ -69,27 +72,33 @@ class Service {
 
         // do the basic server configuration
         this.__configured = false;
-        // this.config()
+        /** @type {Array<() => void} */
+        this.__loader = [];
+        this.__config()
+    }
+
+    async __config() {
+        try {
+            let session = this.use();
+            for (let configuration of CONFIGURATIONS) {
+                await session.run(configuration);
+            }
+            this.__configured = true;
+            this.__loader.forEach(loader => loader(this.__configured));
+        } catch (error) {
+            console.error(error);
+            this.__loader.forEach(loader => loader(false));
+        }
     }
 
     /**
      * 
      * @returns {Promise<boolean>}
      */
-    config() {
+    configured() {
         if (this.__configured) return Promise.resolve(true);
-        return new Promise(async (resolve, reject) => {
-            try {
-                let session = this.use();
-                for (let configuration of CONFIGURATIONS) {
-                    await session.run(configuration);
-                }
-                this.__configured = true;
-                session.close();
-                resolve(true);
-            } catch (error) {
-                reject(error);
-            }
+        return new Promise(resolve => {
+            this.__loader.push(resolve);
         })
     }
 
