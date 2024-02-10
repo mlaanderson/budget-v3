@@ -4,6 +4,7 @@
 /** @typedef {import ('../lib/types.mjs').BudgetRecord} BudgetRecord */
 /** @typedef {import ('neo4j-driver').Duration} Duration */
 /** @typedef {import ('neo4j-driver').Date} DbDate */
+/** @typedef {import("../lib/types.mjs").DateString} DateString */
 
 import NObject from "./nobject.mjs";
 import { randomUUID } from "crypto";
@@ -64,6 +65,10 @@ RETURN
  * session: Session,
  * service: Service,
  * id: string,
+ * name: string,
+ * theme: string,
+ * periods: { previous: DateString, current: DateString, next: DateString },
+ * period: Duration,
  * loaded: () => Promise<boolean>
  * }} Budget
  */
@@ -92,6 +97,12 @@ class Budget extends NObject {
             period,
             uuid: randomUUID()
         });
+
+        if (this.__data) {
+            this.__periods = await this.getPeriodDates();
+        } else {
+            this.__periods = null;
+        }
        
         super.load();
     }
@@ -138,12 +149,10 @@ class Budget extends NObject {
         return account;
     }
 
-    /** @type {string} */
     get owner() {
         return this.__data ? this.__data.owner : null;
     }
 
-    /** @type {Duration} */
     get period() {
         return this.__data ? this.__data.period : null;
     }
@@ -160,6 +169,14 @@ class Budget extends NObject {
         return this.__data ? this.__data.theme : null;
     }
 
+    get periods() {
+        return this.__periods;
+    }
+
+    set periods(value) {
+        this.__periods = value;
+    }
+
     async getPeriodDates(date) {
         if (date === undefined) {
             date = new Date().toISOString().substring(0, 10);
@@ -174,7 +191,7 @@ class Budget extends NObject {
                 date
             });
             if (query.records.length !== 1) {
-                return [];
+                return null;
             }
             /** @type {Duration} */
             let days = query.records[0].get('days');
@@ -186,15 +203,13 @@ class Budget extends NObject {
                 date
             });
             if (query.records.length !== 1) {
-                return [];
+                return null;
             }
             /** @type {Duration} */
             let months = query.records[0].get('months');
 
             periods = months.months / this.period.months;
         }
-
-        console.log(periods)
 
         query = await this.session.run(GET_DATES, {uuid: this.id, periods});
         return {

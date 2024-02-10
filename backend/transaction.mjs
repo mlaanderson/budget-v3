@@ -13,7 +13,7 @@ WHERE
     account.uuid = $account_id
 CREATE (transaction:Transaction {
     date: $date,
-    amount: $amount,
+    amount: round($amount, 2),
     category: $category,
     memo: $memo,
     check: $check,
@@ -23,7 +23,7 @@ CREATE (transaction:Transaction {
     cash: $cash,
     notes: $notes,
     uuid: $uuid
-}), (transaction)-[:FROM]->(account)
+}), (transaction)-[:WITHDRAWAL]->(account)
 RETURN transaction
 `;
 
@@ -34,7 +34,7 @@ WHERE
     toAcc.name = $transfer
 CREATE (transaction:Transaction {
     date: $date,
-    amount: $amount,
+    amount: round($amount, 2),
     category: $category,
     memo: $memo,
     check: $check,
@@ -45,8 +45,8 @@ CREATE (transaction:Transaction {
     notes: $notes,
     uuid: $uuid
 }), 
-(transaction)-[:FROM]->(fromAcc),
-(transaction)-[:TO]->(toAcc)
+(transaction)-[:WITHDRAWAL]->(fromAcc),
+(transaction)-[:DEPOSIT]->(toAcc)
 RETURN transaction
 `;
 
@@ -67,7 +67,7 @@ class Transaction extends NObject {
     /**
      * 
      * @param {Account} account 
-     * @param {string} uuid
+     * @param {string|Object.<string,any>} uuid
      * @param {string} date 
      * @param {number} amount 
      * @param {string} category 
@@ -100,24 +100,29 @@ class Transaction extends NObject {
      */
     async load(account, uuid, date, amount, category, memo, check, transfer, scheduled, cleared, cash, notes) {
         this.__account = account;
-        if (!uuid) {
-            uuid = randomUUID();
+        if (!!uuid && (typeof uuid === 'object')) {
+            /** @type {TransactionRecord} */
+            this.__data = {...uuid};
+        } else {
+            if (!uuid) {
+                uuid = randomUUID();
+            }
+            /** @type {TransactionRecord} */
+            this.__data = await this.loadOrCreateSingle(LOAD_TRANSACTION, transfer ? CREATE_TRANFER : CREATE_TRANSACTION, 'transaction', {
+                account_id: account.id,
+                uuid,
+                date,
+                amount,
+                category,
+                memo,
+                check,
+                transfer,
+                scheduled,
+                cleared,
+                cash,
+                notes
+            });
         }
-        /** @type {TransactionRecord} */
-        this.__data = await this.loadOrCreateSingle(LOAD_TRANSACTION, transfer ? CREATE_TRANFER : CREATE_TRANSACTION, 'transaction', {
-            account_id: account.id,
-            uuid,
-            date,
-            amount,
-            category,
-            memo,
-            check,
-            transfer,
-            scheduled,
-            cleared,
-            cash,
-            notes
-        });
 
         super.load();
     }
@@ -125,6 +130,38 @@ class Transaction extends NObject {
 
     get id() {
         return this.__data ? this.__data.uuid : null;
+    }
+
+    get date() {
+        return this.__data ? this.__data.date.toStandardDate() : null;
+    }
+
+    get amount() {
+        return this.__data ? this.__data.amount : 0;
+    }
+
+    get notes() {
+        return this.__data ? this.__data.notes : '';
+    }
+
+    get scheduled() {
+        return this.__data ? this.__data.scheduled : false;
+    }
+
+    get cleared() {
+        return this.__data ? this.__data.cleared : false;
+    }
+
+    get category() {
+        return this.__data ? this.__data.category : '';
+    }
+
+    get memo() {
+        return this.__data ? this.__data.memo : '';
+    }
+
+    get cash() {
+        return this.__data ? this.__data.cash : false;
     }
 }
 

@@ -75,7 +75,7 @@ class NObject {
     }
 
     async close() {
-        return await this.__session.close();
+        return await this.__service.free(this.__session);
     }
 }
 

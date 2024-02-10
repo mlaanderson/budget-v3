@@ -18,6 +18,7 @@ function SessionPoolProxy(service, session) {
     return new Proxy(session, {
         apply(target, thisArg, args) {
             if (target.name === 'close') {
+                console.log('closing session');
                 // free up this session
                 service.free(this);
                 // keep the function signature
@@ -34,7 +35,7 @@ function SessionPoolProxy(service, session) {
             }
             return target[property];
         }
-    })
+    });
 }
 
 const CONFIGURATIONS = [
@@ -66,7 +67,7 @@ class Service {
 
         // prepopulate the pool with 10
         for (let n = 0; n < MIN_POOL_SIZE; n++) {
-            let session = SessionPoolProxy(this, this.__driver.session({ database }));
+            let session = new SessionPoolProxy(this, this.__driver.session({ database }));
             this.__pool.push(session);
         }
 
@@ -127,7 +128,7 @@ class Service {
             this.__inuse.push(session);
             return session;
         } else if (this.__inuse.length < MAX_POOL_SIZE) {
-            let session = SessionPoolProxy(this, this.__driver.session({ database }));
+            let session = SessionPoolProxy(this, this.__driver.session({ database: this.__database }));
             this.__inuse.push(session);
             return session;
         }
