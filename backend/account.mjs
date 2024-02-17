@@ -363,7 +363,7 @@ class Account extends NObject {
         return result;
     }
 
-    async getDailyBalances() {
+    async loadDailyBalances() {
         let queryWithdrawalBalances = await this.session.run(GET_DAILY_WITHDRAWAL_BALANCES, this.periodInfo);
         let queryDepositBalances = await this.session.run(GET_DAILY_DEPOSIT_BALANCES, this.periodInfo);
 

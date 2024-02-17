@@ -218,6 +218,10 @@ class Budget extends NObject {
             next: query.records[0].get('next').toStandardDate().toISOString().substring(0,10)
         };
     }
+
+    toJSON() {
+        return {...this.__data, periods: this.periods};
+    }
 }
 
 export default Budget;

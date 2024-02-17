@@ -1,19 +1,18 @@
-
-// import fs from 'fs/promises';
-
-// let budget_text = await fs.readFile('./budget-2024-02-02.json');
-// let budget_data = JSON.parse(budget_text);
-// console.log(JSON.stringify(budget_data.accounts.budget.transactions, null, 4));
+import http from 'http';
+import express from 'express';
+import https from 'https';
+import morgan from 'morgan';
+import bodyParser from 'body-parser';
+import session from 'express-session';
+import connectSqlite3 from 'connect-sqlite3';
 
 import Service from './backend/service.mjs';
-import UserManager from './backend/user.mjs';
-import Budget from './backend/budget.mjs';
 import { auth } from 'neo4j-driver'
-import Transaction from './backend/transaction.mjs';
+import WebSockets from './websockets/index.mjs';
 
+const DEBUG = true;
 const service = new Service('neo4j://localhost', 'neo4j', auth.basic('neo4j', 'I love my daughter.'));
 await service.configured();
-const userManager = new UserManager(service);
 
 async function shutdown() {
     console.log('\nShutting down...');
@@ -25,14 +24,45 @@ process.on('SIGTERM', shutdown);
 process.on('SIGBREAK', shutdown);
 process.on('SIGINT', shutdown);
 
-let user = await userManager.get('michael@anderson-clan.org');
-const budget = new Budget(service, user, 'Family Budget');
+const app = express();
 
-await budget.loaded();
-let periods = await budget.getPeriodDates('2024-05-04');
-console.log(periods);
-// let account = await budget.getAccount('Family Checking');
-// let transaction = await account.createTransaction('2024-02-05', -23.14, 'Personal', 'Mad Money--Kari', null, null, false, false, false, '');
-// console.log(transaction.__data);
+// Common logging
+app.use(morgan('common'));
 
-await shutdown();
+// body parser middle ware with json decoding
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// allow cross origin in debug
+if (DEBUG) {
+    app.use((req, res, next) => {
+        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+        res.setHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:5173');
+        res.setHeader('Access-Control-Allow-Headers', 'Connection,Content-Length,Content-Encoding,Content-Type,Cookie,Date,Etag,Keep-Alive,Set-Cookie,X-Powered-By');
+        next();
+    });
+}
+
+// setup the session
+const SqliteStore = connectSqlite3(session);
+app.use(session({
+    store: new SqliteStore({
+        table: 'sessions',
+        db: 'sessions.sqlite',
+        dir: '.',
+        concurrentDB: false
+    }),
+    secret: 'fat orange cat',
+    resave: true,
+    saveUninitialized: false
+}));
+
+// serve static files
+app.use('/', express.static('budget-webapp/dist'));
+
+
+
+// start the server
+WebSockets(service, http.createServer(app).listen(8080, () => {
+    console.log('Server listening on 8080');
+}));

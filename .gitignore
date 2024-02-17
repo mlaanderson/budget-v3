@@ -132,6 +132,10 @@ dist
 # backup files
 budget*.json
 
-# app config files and server keys
+# app config files, server keys, sessions
 .config.json
 *.pem
+*.sqlite
+
+# vscode files
+.vscode
